@@ -21,6 +21,7 @@
 - [3. 架构图](#3-架构图)
 - [4. 目录结构](#4-目录结构)
 - [5. 快速开始](#5-快速开始)
+  - [5.5 部署到公网](#55-部署到公网)
 - [6. 环境变量](#6-环境变量)
 - [7. 数据源与合规说明](#7-数据源与合规说明)
 - [8. 界面预览：截图待补充](#8-界面预览截图待补充)
@@ -364,6 +365,108 @@ powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 
 ---
 
+### 5.5 部署到公网
+
+自托管（Docker + Nginx）与托管平台都能跑，下面是以「前端 Vercel + 后端 Render / Fly.io + 托管 PostgreSQL / Redis」为例的公网方案，全程免费额度即可试用。
+
+| 组件 | 推荐托管 | 说明 |
+| --- | --- | --- |
+| 前端 Web | Vercel | 直接连 GitHub 仓库，自动构建；Root Directory 设为 `web` |
+| 后端 API | Render / Fly.io | 用 `api/Dockerfile` 构建（镜像已内置 `psycopg` / `celery` / `redis`） |
+| PostgreSQL | Neon / Supabase / Render PG | 免费额度足够个人研究使用，务必启用 SSL |
+| Redis | Upstash | 可选：仅用于跨副本缓存与后台任务 |
+| 后台任务 | Render Background Worker | 可选：`celery -A app.tasks worker -B -l info`，未启用不影响前台 |
+
+#### ⚠️ 公网部署三条硬红线
+
+1. **必须显式设 `AUTH_ENABLED=true`**（默认 `false` 是给「只在本机看数据」的开源默认值）。开启后 `/api/v1/auth/*` 才会真正注册与签发令牌。
+2. **必须显式设 `JWT_SECRET`**（≥32 字节随机串）。不设时进程会自动生成并写入 `.horizon_secret`，**多副本之间签名不一致、重启后旧令牌立即失效**。
+3. **`CORS_ORIGINS` 必须填前端真实域名**（如 `https://horizon.example.com`），不要保留默认的 `http://localhost:3000`。
+
+生成随机密钥：
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+#### 步骤 1 · 准备数据库
+
+在 Neon / Supabase 建库后拿到连接串，把 `sslmode=require` 补齐：
+
+```dotenv
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require
+```
+
+表结构在 API 启动时自动创建（`api/app/main.py` 的 lifespan 调用 `init_db()`），首次启动无需手工迁移。
+
+#### 步骤 2 · 准备 Redis（可选）
+
+```dotenv
+REDIS_URL=rediss://default:PASSWORD@HOST:6379
+```
+
+Redis 同时承担 L2 缓存与 Celery broker（`db1`）；不配置时自动退回进程内缓存，功能不受影响，只是每个副本各存一份。
+
+#### 步骤 3 · 部署 API（Render 示例）
+
+1. New → **Web Service** → 选择本仓库 → Runtime 选 **Docker**，Dockerfile Path 填 `api/Dockerfile`。
+2. Health Check Path 填 `/health`。
+3. 环境变量（Environment）：
+
+```dotenv
+ENV=production
+DATABASE_URL=postgresql+psycopg://...
+REDIS_URL=rediss://...
+CORS_ORIGINS=https://<你的前端域名>
+AUTH_ENABLED=true
+JWT_SECRET=<上一步生成的 48 字节随机串>
+TOKEN_TTL_HOURS=72
+# 数据源：不填则自动降级为 synthetic；A 股可选安装 akshare
+YAHOO_ENABLED=true
+AKSHARE_ENABLED=false
+# 需要邮件验证码时再配（不配则注册即生效）
+# SMTP_HOST=  SMTP_PORT=587  SMTP_USER=  SMTP_PASSWORD=  SMTP_FROM=
+```
+
+4. 部署完成后访问 `https://<api 域名>/health`，应返回 `{"ok": true, ...}`。
+5. **`/docs` 不对公网开放**：托管平台上不会经过 `infra/nginx.conf`，若不想暴露 Swagger，请设 `ENV=production` 并在平台层做访问限制（或加 IP 白名单）。排查问题时再临时开放。
+
+> Fly.io 等价做法：`fly launch --dockerfile api/Dockerfile`，用 `fly secrets set` 注入上面的变量；`fly.toml` 的 `[http_service]` 里把 health check 指向 `/health`。
+
+#### 步骤 4 · 部署 Web（Vercel 示例）
+
+1. Vercel → Add New Project → 导入同一仓库 → **Root Directory 选择 `web`**，Framework 自动识别为 Next.js。
+2. 环境变量：
+
+```dotenv
+# 服务端 BFF 代理目标，必须是 Vercel 能访问到的 API 公网地址（不要填 127.0.0.1）
+API_INTERNAL_URL=https://<api 域名>
+# 设置页「问题反馈」要用到的仓库地址
+NEXT_PUBLIC_REPO_URL=https://github.com/<你的用户名>/horizon
+NEXT_PUBLIC_APP_VERSION=0.1.0
+```
+
+3. 部署完成后打开首页：浏览器只与同域的 `/api/v1/*` 通信，由 Next 的 rewrite 转发到 API，**任何密钥都不会进入前端**。
+
+> 如果你希望前端直连 API（不走 BFF），需要额外把 `CORS_ORIGINS` 加上前端域名，并在 `web/lib/api.ts` 里改基地址——默认配置不需要这一步。
+
+#### 步骤 5 · 上线自检清单
+
+- [ ] `GET https://<api>/health` 返回 `ok: true`
+- [ ] 首页各模块右上角显示「数据 YYYY-MM-DD（周x）HH:MM」，且 `source` 不是 `synthetic`（否则说明数据源没通，页面会如实在「数据状态」里标注）
+- [ ] 设置页「数据状态」表格能打开，代理指标有来源说明
+- [ ] 注册 → 登录 → 刷新后仍保持登录（令牌存于 `localStorage["horizon.token"]`）
+- [ ] 期权计算器能算出最大收益/最大风险，金额标注为「1 张 = 100 股」
+- [ ] 页脚与设置页的免责声明完整显示
+- [ ] `/docs`、`/openapi.json` 未对公网裸露（或已加访问限制）
+
+#### 成本与合规提醒
+
+- 免费额度：Vercel Hobby + Render Free + Neon Free + Upstash Free 足以支撑个人研究；Render 免费实例会休眠，首次请求有冷启动延迟。
+- yfinance 是公开但非官方承诺的接口，AKShare 依赖各站点结构；**公网高频访问前请自行评估各数据源的使用条款**，并依赖后端内置的 TTL 缓存（行情 60s / 日线 900s / 基本面 6h）与并发上限控制请求量。
+- 本项目的定位是「个人金融数据学习与研究工具」：**不要**在此基础上增加荐股、带单、自动交易或收益承诺类功能，也不要删除免责声明。
+
+---
 ## 6. 环境变量
 
 所有配置均通过环境变量注入，代码中**没有任何硬编码密钥**。变量名与

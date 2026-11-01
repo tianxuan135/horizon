@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Horizon 设计基线：Apple 极简 —— 大留白、毛玻璃、平滑过渡。
+ * 主色纯白 / 浅灰；点缀科技蓝（进攻）与警示红（贪婪）。
+ */
+:root {
+  color-scheme: light;
+  --hairline: rgba(0, 0, 0, 0.07);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-canvas text-ink antialiased;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+  background-image:
+    radial-gradient(1200px 620px at 12% -8%, rgba(10, 132, 255, 0.07), transparent 62%),
+    radial-gradient(980px 520px at 92% 4%, rgba(255, 179, 64, 0.06), transparent 58%),
+    radial-gradient(700px 420px at 50% 108%, rgba(31, 138, 76, 0.05), transparent 60%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(10, 132, 255, 0.16);
+}
+
+/* 细滚动条，避免打断留白节奏 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .glass {
+    @apply border border-white/60 bg-white/70 backdrop-blur-xl;
+    box-shadow: 0 12px 34px -18px rgba(15, 18, 25, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  .card {
+    @apply rounded-card border border-black/[0.055] bg-canvas-card shadow-card;
+  }
+
+  .card-pad {
+    @apply p-5 sm:p-7;
+  }
+
+  .hairline {
+    border-color: var(--hairline);
+  }
+
+  .pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[12px] font-medium tracking-wide;
+  }
+
+  .segmented {
+    @apply inline-flex items-center gap-0.5 rounded-full bg-canvas-alt p-1;
+  }
+
+  .segmented-item {
+    @apply rounded-full px-3 py-1.5 text-[13px] font-medium text-ink-mute transition-all duration-300 ease-apple;
+  }
+
+  .segmented-item-active {
+    @apply bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08),0_6px_16px_-10px_rgba(0,0,0,0.4)];
+  }
+
+  .stat-label {
+    @apply text-[12px] font-medium uppercase tracking-[0.08em] text-ink-faint;
+  }
+
+  .stat-value {
+    @apply font-mono text-[26px] font-semibold tabular-nums tracking-tight text-ink;
+  }
+
+  .mono {
+    @apply font-mono tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

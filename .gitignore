@@ -1,0 +1,179 @@
+# ============================================================
+# Horizon 极目楚天 —— Git 忽略规则
+# 原则：任何密钥、任何本地数据、任何构建产物都不得进入版本库。
+# ============================================================
+
+# -------------------- 环境变量 / 密钥（最高优先级） --------------------
+# 只提交 .env.example，绝不允许提交真实 .env
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.env
+.envrc
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+service-account*.json
+
+# -------------------- Node / Next.js --------------------
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+.next/
+out/
+build/
+dist/
+.turbo/
+.swc/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+.eslintcache
+.cache/
+storybook-static/
+
+# -------------------- Python --------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+virtualenv/
+.python-version
+
+# 测试 / 类型检查 / 格式化缓存
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# -------------------- 数据库 / 时序数据 --------------------
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.duckdb
+*.parquet
+horizon.db
+data/
+!data/.gitkeep
+pgdata/
+timescaledb/
+redis-data/
+
+# 数据源本地缓存导出（可能包含受限数据，禁止入库）
+cache/
+.cache-data/
+*.csv.gz
+*.feather
+*.h5
+
+# -------------------- 日志 --------------------
+logs/
+*.log
+!docs/**/*.log
+
+# -------------------- 操作系统 --------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# -------------------- 编辑器 / IDE --------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+
+# -------------------- 容器 / 基础设施 --------------------
+docker-compose.override.yml
+infra/.env
+infra/*.local.yml
+*.pid
+*.seed
+
+# -------------------- 其他 --------------------
+tmp/
+temp/
+*.bak
+*.orig
+*.rej
+*.patch.tmp
+
+# -------------------- 运行时产物 / 本地密钥（切勿提交） --------------------
+# 未设置 JWT_SECRET 时自动生成的令牌签名密钥（见 api/app/auth/security.py）
+api/.horizon_secret
+.horizon_secret
+# 本地 SQLite 业务库（首次启动自动创建，含自选股与账号数据）
+api/*.db
+*.sqlite
+*.sqlite3
+# 本地日志 / 冒烟输出
+*.log
+smoke.out.txt
+api/uvicorn*.log

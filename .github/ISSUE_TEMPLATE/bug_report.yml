@@ -1,0 +1,138 @@
+name: 缺陷报告
+description: 报告一个可复现的缺陷（计算错误、接口异常、页面白屏、部署失败等）
+title: "[缺陷] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 提交前请确认
+        - 请先搜索 [已有 Issue](https://github.com/your-org/horizon/issues?q=is%3Aissue)，避免重复。
+        - **不要**在本表单粘贴任何密钥、token、付费数据源凭据、个人邮箱或含隐私的截图。
+        - **安全漏洞**（认证绕过、注入、信息泄露等）请勿公开提交，请按 [SECURITY.md](https://github.com/your-org/horizon/blob/main/SECURITY.md) 私下上报。
+        - 本工具为自托管研究工具，**不构成投资建议**；与「指标预测不准」相关的问题，请说明具体公式与数据来源，而非仅描述涨跌结果。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题描述
+      description: 用一两句话概括现象。
+      placeholder: 例如：成分股当日无成交时，拥挤度 social 分量返回 NaN，页面图表整体空白。
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 发生模块
+      description: 主要出问题的功能板块。
+      options:
+        - 市场拥挤度
+        - 风格轮动分析
+        - 估值分析
+        - 因子策略分析
+        - 期权策略分析
+        - 设置与账号（登录/验证码/自选）
+        - 数据源与降级链
+        - 部署与容器（Docker Compose / nginx / 环境变量）
+        - 文档
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请按顺序列出最小复现路径。
+      placeholder: |
+        1. 打开 /rotation 页面
+        2. 选择市场=美股，期限=60 日
+        3. 点击「计算」
+        4. 控制台报错 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 你预期看到什么结果？
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么。若有报错，请粘贴完整报错信息与堆栈。
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: 运行方式
+      options:
+        - Docker Compose（infra/docker-compose.yml）
+        - 本地开发（uvicorn + next dev）
+        - 自建生产部署（请在下文补充说明）
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本或提交号
+      description: 从哪里获取：`git rev-parse --short HEAD`，或镜像 tag。
+      placeholder: 例如：e3f1a2c / horizon-api:local
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - 其他（请在补充信息中说明）
+    validations:
+      required: true
+
+  - type: input
+    id: runtime
+    attributes:
+      label: 运行时版本
+      description: 请填写实际版本号。
+      placeholder: 例如：Node 22.11.0 / Python 3.12.7 / Docker 27.3.1
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 诊断信息（请先自行检查是否含敏感内容）
+      description: |
+        后端：`curl http://127.0.0.1:8000/health` 的输出；若可用，附 `/api/v1/meta/status` 中未成功的 source 与 warnings。
+        前端：浏览器控制台的错误行；容器场景请附 `docker compose -f infra/docker-compose.yml logs --tail=50 api web`。
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 确认项
+      options:
+        - label: 我已搜索过已有 Issue，确认没有重复
+          required: true
+        - label: 我已阅读 README 的常见问题与 SECURITY.md 的上报流程
+          required: true
+        - label: 本 Issue 不含任何密钥、token、付费数据源凭据或真实个人邮箱
+          required: true
+        - label: 我理解本工具输出仅供研究参考，不构成投资建议
+          required: true

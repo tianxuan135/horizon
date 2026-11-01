@@ -1,0 +1,35 @@
+# 构建上下文裁剪：宿主机的 node_modules 绝不能被拷进镜像
+# （Windows/macOS 上的原生二进制在 alpine 中不可用，会直接破坏构建产物）
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+.swc/
+.vercel/
+coverage/
+
+# 密钥与本地配置
+.env
+.env.*
+!.env.example
+
+# 日志与缓存
+*.log
+install.log
+npm-debug.log*
+.eslintcache
+*.tsbuildinfo
+
+# 版本控制与编辑器
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+
+# 文档与容器文件本身
+*.md
+Dockerfile
+.dockerignore

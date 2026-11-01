@@ -1,0 +1,13 @@
+# 问题模板选择页配置
+# 关闭空白 Issue，引导用户走模板或私下上报安全漏洞
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞（请私下上报）
+    url: https://github.com/your-org/horizon/security/advisories/new
+    about: 请勿在公开 Issue 中披露安全漏洞，处置流程见 SECURITY.md
+  - name: 部署与使用问题
+    url: https://github.com/your-org/horizon/discussions
+    about: 安装、环境变量、数据源配置等使用类问题请先去 Discussions
+  - name: 贡献指南
+    url: https://github.com/your-org/horizon/blob/main/CONTRIBUTING.md
+    about: 提交代码或数据源前请先阅读 CONTRIBUTING.md 与 docs/DATA_SOURCES.md

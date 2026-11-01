@@ -1,5 +1,5 @@
 # Horizon API 依赖（开源部署请勿在此文件写入任何密钥）
-fastapi>=0.115.0
+fastapi>=0.162.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.9.0
 pydantic-settings>=2.5.0

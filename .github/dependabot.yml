@@ -1,0 +1,31 @@
+# 依赖更新：只在开源仓库层面做「有小版本就提 PR」，由人工审查后合并。
+# 说明：金融计算相关依赖（numpy/pandas）默认不自动合并，避免口径被静默改动。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      web-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: pip
+    directory: /api
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      # 数值库大版本可能与现有回测口径不一致，升级需人工评估
+      - dependency-name: numpy
+        update-types: ["version-update:semver-major"]
+      - dependency-name: pandas
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

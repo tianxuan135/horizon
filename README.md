@@ -11,6 +11,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB.svg)](api/requirements.txt)
 [![Node](https://img.shields.io/badge/Node-22-339933.svg)](web/package.json)
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000.svg)](web/package.json)
+[![CI](https://github.com/tianxuan135/horizon/actions/workflows/ci.yml/badge.svg)](https://github.com/tianxuan135/horizon/actions/workflows/ci.yml)
 
 ---
 
@@ -27,6 +28,7 @@
 - [8. 界面预览：截图待补充](#8-界面预览截图待补充)
 - [9. 贡献方式](#9-贡献方式)
 - [10. 许可证](#10-许可证)
+- [变更日志](https://github.com/tianxuan135/horizon/blob/main/CHANGELOG.md)
 - [免责声明](#免责声明)
 
 ---
@@ -604,6 +606,8 @@ git push origin feat/your-feature
 提交前请确认：无硬编码密钥、无真实数据源凭据、**未加入任何荐股 / 带单 / 自动交易功能**。
 
 ---
+
+提交前请同步更新 [`CHANGELOG.md`](https://github.com/tianxuan135/horizon/blob/main/CHANGELOG.md) 的 `[未发布]` 小节。
 
 ## 10. 许可证
 

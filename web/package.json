@@ -2,6 +2,15 @@
   "name": "horizon-web",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tianxuan135/horizon.git"
+  },
+  "homepage": "https://github.com/tianxuan135/horizon#readme",
+  "bugs": {
+    "url": "https://github.com/tianxuan135/horizon/issues"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

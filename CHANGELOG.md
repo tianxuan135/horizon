@@ -74,5 +74,5 @@
 - 期权链为 Black-Scholes 模型价（`source: "model:blackscholes-realised-vol"`），不是可成交报价。
 - 回测股票池为固定样本，Alpha 偏高、Beta 偏低，不构成策略有效性的证据。
 
-[未发布]: https://github.com/your-org/horizon/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/your-org/horizon/releases/tag/v0.1.0
+[未发布]: https://github.com/tianxuan135/horizon/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/tianxuan135/horizon/releases/tag/v0.1.0

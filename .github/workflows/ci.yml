@@ -1,5 +1,5 @@
-# Horizon CI：后端编译/导入检查 + 前端生产构建 + 仓库卫生（密钥与产物守卫）
-# 说明：全部 job 只读仓库，不接触任何真实密钥；数据源在 CI 中自动降级为 synthetic。
+# Horizon CI：后端编译/接口自检 + 前端生产构建 + 仓库卫生（密钥与产物守卫）
+# 说明：全部 job 只读仓库、不接触真实密钥；数据源在 CI 中显式关闭，走内置降级链。
 name: CI
 
 on:
@@ -23,6 +23,13 @@ jobs:
     defaults:
       run:
         working-directory: api
+    env:
+      # CI 无外网数据源与 Redis：显式关闭，避免等待超时；降级为内置合成数据
+      YAHOO_ENABLED: "false"
+      AKSHARE_ENABLED: "false"
+      AUTH_ENABLED: "false"
+      DATABASE_URL: "sqlite:///./ci.db"
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -34,28 +41,58 @@ jobs:
 
       - name: 安装依赖
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          python -c "import fastapi, pydantic, numpy, pandas, sqlalchemy; print('deps ok')"
 
       - name: 字节码编译（语法检查）
-        run: python -m compileall -q app
-
-      - name: 导入检查（路由与配置可加载）
-        env:
-          # CI 中没有外网数据源与 Redis，显式关闭可插拔数据源，避免等待超时
-          YAHOO_ENABLED: "false"
-          AKSHARE_ENABLED: "false"
-          AUTH_ENABLED: "false"
-          DATABASE_URL: "sqlite:///./ci.db"
         run: |
-          python -c "
+          set -euo pipefail
+          python -m compileall -q app
+
+      - name: 导入与接口自检（进程内 TestClient，不触网）
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import sys
+          import fastapi
           from fastapi import FastAPI
+
+          print(f"python {sys.version.split()[0]} / fastapi {fastapi.__version__}")
+
           from app.main import app
-          assert isinstance(app, FastAPI)
-          paths = sorted({r.path for r in app.routes if getattr(r, 'path', '').startswith('/api/v1')})
-          print(f'已注册 API 路由: {len(paths)} 条')
-          assert len(paths) >= 20, f'路由数量异常: {len(paths)}'
-          "
+
+          assert isinstance(app, FastAPI), "app.main.app 不是 FastAPI 实例"
+
+          # 注意：fastapi 0.120+ 起 include_router 的子路由不再展开进 app.routes，
+          # 因此用 openapi() 读取真实注册的路径。
+          paths = sorted(p for p in app.openapi()["paths"] if p.startswith("/api/v1"))
+          print(f"/api/v1 路由 {len(paths)} 条")
+          assert len(paths) >= 20, f"路由数量异常：{len(paths)}（期望 >= 20）"
+
+          from fastapi.testclient import TestClient
+
+          with TestClient(app) as client:
+              r = client.get("/health")
+              assert r.status_code == 200, f"/health -> {r.status_code}"
+              assert r.json().get("ok") is True, r.text[:200]
+              print("health ok:", r.json())
+
+              r = client.get("/api/v1/meta/status", params={"market": "us"})
+              assert r.status_code == 200, f"/meta/status -> {r.status_code}: {r.text[:300]}"
+              body = r.json()
+              assert body.get("sources"), "meta/status 缺少 sources"
+              print(f"meta/status ok: {len(body['sources'])} 个数据源")
+
+              r = client.get("/api/v1/crowding/industries")
+              assert r.status_code == 200, f"/crowding/industries -> {r.status_code}: {r.text[:300]}"
+              names = r.json().get("industries", [])
+              assert len(names) == 13, f"固定行业应为 13 个，实际 {len(names)}"
+              print("crowding/industries ok: 13 个固定行业")
+
+          print("API 自检通过")
+          PY
 
   web:
     name: Web · Next.js 生产构建
@@ -88,8 +125,8 @@ jobs:
 
       - name: 禁止提交运行时产物
         run: |
-          set -e
-          bad=$(git ls-files | grep -E '(^|/)(\.env|\.env\..*|.*\.db|.*\.sqlite3?|\.horizon_secret|node_modules|\.next)/?' | grep -v '\.env\.example' || true)
+          set -eu
+          bad=$(git ls-files | grep -E '(^|/)(\.env|\.env\..*|.*\.db|.*\.sqlite3?|\.horizon_secret|node_modules|\.next)' | grep -v '\.env\.example' || true)
           if [ -n "$bad" ]; then
             echo "::error::以下文件不应提交："; echo "$bad"; exit 1
           fi
@@ -97,13 +134,13 @@ jobs:
 
       - name: 禁止硬编码密钥
         run: |
-          set -e
+          set -eu
           if grep -rInE '(sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)' \
                --include='*.py' --include='*.ts' --include='*.tsx' --include='*.yml' --include='*.yaml' \
                --include='*.json' --include='*.md' . ; then
             echo "::error::疑似硬编码密钥，请改为环境变量"; exit 1
           fi
-          if grep -rInE 'JWT_SECRET[[:space:]]*=[[:space:]]*["'\'']?[A-Za-z0-9_-]{16,}' \
+          if grep -rInE 'JWT_SECRET[[:space:]]*=[[:space:]]*['"'"'"]?[A-Za-z0-9_-]{16,}' \
                --include='*.py' --include='*.ts' --include='*.tsx' --include='*.yml' --include='*.yaml' . ; then
             echo "::error::禁止在代码中写死 JWT_SECRET"; exit 1
           fi
@@ -111,7 +148,7 @@ jobs:
 
       - name: 强制免责声明在位
         run: |
-          set -e
+          set -eu
           grep -q "不构成任何投资建议" README.md || { echo "::error::README 缺少免责声明"; exit 1; }
           grep -q "不构成任何投资建议" web/app/page.tsx || { echo "::error::首页缺少免责声明"; exit 1; }
           echo "OK：免责声明仍在"
